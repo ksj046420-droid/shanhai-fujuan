@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>山海浮卷 · 全界面动画 + 3D模型交互版</title>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+<style>
+  :root{
+    --gold:#e8bd73;--gold2:#ffdd92;--deep:#051018;--panel:rgba(6,17,25,.82);--cyan:#7ed8ff;--ink:#0a1420;--paper:#dbc089;--red:#ba4b2b;
+    --stage-w:min(100vw, calc(100vh * 1672 / 941));--stage-h:calc(var(--stage-w) * 941 / 1672);
+  }
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#02070c;color:#f7e8c6;font-family:"Microsoft YaHei","PingFang SC",system-ui,-apple-system,Segoe UI,sans-serif;}
+  body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 48%,rgba(240,177,72,.15),transparent 32%),linear-gradient(180deg,#02050b,#07131b 48%,#02050b);pointer-events:none;}
+  #app{position:fixed;inset:0;display:grid;place-items:center;}
+  .stage{position:relative;width:var(--stage-w);height:var(--stage-h);max-width:100vw;max-height:100vh;overflow:hidden;background:#051018;box-shadow:0 0 55px rgba(237,184,91,.16),0 0 0 1px rgba(232,189,115,.32) inset;isolation:isolate;}
+  .page-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none;filter:saturate(1.04) contrast(1.02);}
+  .dim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.01),rgba(0,0,0,.08));pointer-events:none;}
+  .hotspot{position:absolute;border:1px solid transparent;border-radius:12px;cursor:pointer;z-index:5;transition:.18s ease;background:transparent;padding:0;}
+  .hotspot:hover,.hotspot.focus{border-color:rgba(255,219,145,.74);box-shadow:0 0 0 1px rgba(255,219,145,.18) inset,0 0 24px rgba(232,189,115,.38);background:rgba(255,204,102,.06);}
+  .hotspot.node{border-radius:50%;}
+  .hotspot.panel{border-radius:18px;}
+  .show-hotspots .hotspot{border-color:rgba(255,219,145,.46);background:rgba(255,204,102,.06);}
+  .hot-label{position:absolute;left:8px;top:-25px;padding:2px 8px;border:1px solid rgba(232,189,115,.45);background:rgba(3,12,18,.82);color:#ffe0a0;font-size:12px;border-radius:12px;opacity:0;white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px #000;}
+  .show-hotspots .hot-label,.hotspot:hover .hot-label{opacity:1;}
+  .ui-breadcrumb{position:absolute;left:15.9%;top:8.8%;z-index:8;padding:5px 12px;border:1px solid rgba(232,189,115,.35);background:rgba(0,0,0,.34);border-radius:999px;color:#f8d699;font-size:12px;letter-spacing:.1em;backdrop-filter:blur(8px);pointer-events:none;}
+  .page-counter{position:absolute;right:1.6%;top:8.6%;z-index:8;padding:5px 11px;border:1px solid rgba(232,189,115,.35);background:rgba(0,0,0,.34);border-radius:999px;color:#c9d9df;font-size:12px;backdrop-filter:blur(8px);pointer-events:none;}
+  .devbar{position:absolute;right:1.1%;bottom:1.15%;z-index:18;display:flex;gap:6px;align-items:center;opacity:.34;transition:.2s ease;}
+  .devbar:hover{opacity:1;}
+  .mini-btn{height:26px;padding:0 9px;border:1px solid rgba(232,189,115,.38);background:rgba(4,13,19,.68);color:#f6dcab;border-radius:999px;font-size:12px;letter-spacing:.04em;cursor:pointer;backdrop-filter:blur(8px);}
+  .mini-btn:hover{background:rgba(232,189,115,.16);color:#fff0c4;}
+  .quick-nav{position:absolute;left:50%;bottom:1.15%;z-index:16;transform:translateX(-50%);display:flex;gap:7px;padding:5px 7px;border:1px solid rgba(232,189,115,.25);background:rgba(2,8,12,.58);border-radius:999px;backdrop-filter:blur(8px);}
+  .quick-nav button{height:26px;border:1px solid rgba(232,189,115,.30);background:rgba(232,189,115,.06);color:#d8c298;border-radius:999px;padding:0 10px;cursor:pointer;font-size:12px;}
+  .quick-nav button:hover,.quick-nav button.active{background:rgba(232,189,115,.18);color:#ffe0a4;}
+
+  /* 启动页 */
+  .splash{position:absolute;inset:0;overflow:hidden;background:#02070b;}
+  .splash-bg{position:absolute;inset:-3%;background:linear-gradient(rgba(2,7,12,.18),rgba(2,7,12,.74)),url('assets/p00.png') center/cover no-repeat;filter:blur(2px) brightness(.68) saturate(1.15);transform:scale(1.04);}
+  .splash::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 47%,rgba(255,208,125,.34),transparent 23%),radial-gradient(circle at 50% 50%,transparent 26%,rgba(0,0,0,.72) 72%);}
+  .stars{position:absolute;inset:0;background-image:radial-gradient(rgba(255,226,155,.8) 1px,transparent 1px),radial-gradient(rgba(126,216,255,.45) 1px,transparent 1px);background-size:70px 70px,115px 115px;animation:floatStars 14s linear infinite;opacity:.45;}
+  @keyframes floatStars{from{transform:translateY(0)}to{transform:translateY(-70px)}}
+  .splash-core{position:absolute;left:50%;top:50%;width:52%;height:52%;transform:translate(-50%,-48%);border-radius:50%;}
+  .ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(255,211,128,.34);box-shadow:0 0 35px rgba(246,184,87,.13) inset;animation:spin 16s linear infinite;}
+  .ring.r2{inset:10%;border-style:dashed;animation-duration:24s;animation-direction:reverse;opacity:.7}
+  .ring.r3{inset:23%;animation-duration:12s;opacity:.55}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .splash-title{position:absolute;left:50%;top:20.5%;transform:translateX(-50%);text-align:center;text-shadow:0 0 25px rgba(232,189,115,.3);}
+  .splash-title h1{margin:0;font-size:clamp(42px,6.5vw,98px);font-family:Georgia,"STKaiti","KaiTi",serif;letter-spacing:.12em;line-height:1;background:linear-gradient(180deg,#fff3bd,#d89d43 65%,#79511e);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .splash-title p{margin:.8em 0 0;color:#ecd5a5;font-size:clamp(14px,1.3vw,22px);letter-spacing:.35em;}
+  .splash-card{position:absolute;left:50%;top:69%;transform:translate(-50%,-50%);width:min(560px,48%);padding:24px 26px 22px;border:1px solid rgba(232,189,115,.42);border-radius:24px;background:linear-gradient(180deg,rgba(8,23,32,.78),rgba(4,12,18,.88));box-shadow:0 14px 50px rgba(0,0,0,.45),0 0 50px rgba(232,189,115,.12) inset;backdrop-filter:blur(12px);text-align:center;}
+  .splash-card .seal{display:inline-block;margin-bottom:10px;padding:4px 10px;border:1px solid rgba(232,189,115,.45);border-radius:999px;color:#ffd891;font-size:13px;letter-spacing:.26em;}
+  .splash-card p{margin:0 auto 18px;line-height:1.8;color:#cdb68a;font-size:14px;}
+  .enter-btn{position:relative;border:0;background:linear-gradient(180deg,#ffe4a8,#c6842b);color:#211407;font-size:18px;font-weight:700;letter-spacing:.12em;border-radius:999px;padding:13px 32px;cursor:pointer;box-shadow:0 0 28px rgba(246,184,87,.35);}
+  .enter-btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+  .splash-progress{position:absolute;left:50%;top:88%;width:38%;height:4px;transform:translateX(-50%);background:rgba(232,189,115,.16);border-radius:99px;overflow:hidden;}
+  .splash-progress span{display:block;width:72%;height:100%;background:linear-gradient(90deg,transparent,#ffda8a,#fff4c7);animation:scan 2.4s ease-in-out infinite;}
+  @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(140%)}}
+
+  /* 搜索页 */
+  .search-page{position:absolute;inset:0;overflow:hidden;background:#07121b;}
+  .search-page::before{content:"";position:absolute;inset:-2%;background:linear-gradient(rgba(2,8,13,.84),rgba(2,8,13,.91)),url('assets/p00.png') center/cover no-repeat;filter:blur(1px) saturate(.85);}
+  .search-shell{position:absolute;inset:4.8% 5.4%;border:1px solid rgba(232,189,115,.36);border-radius:26px;background:linear-gradient(180deg,rgba(5,18,27,.76),rgba(3,10,15,.88));box-shadow:0 0 0 1px rgba(255,225,158,.06) inset,0 22px 65px rgba(0,0,0,.48);backdrop-filter:blur(14px);display:grid;grid-template-rows:auto auto 1fr;gap:18px;padding:28px;}
+  .search-head{display:flex;align-items:center;gap:18px;}
+  .back-btn,.ghost-btn,.solid-btn{border:1px solid rgba(232,189,115,.46);background:rgba(232,189,115,.08);color:#f9deaa;border-radius:14px;padding:10px 14px;cursor:pointer;}
+  .back-btn:hover,.ghost-btn:hover{background:rgba(232,189,115,.16)}
+  .solid-btn{background:linear-gradient(180deg,#f7d18d,#a66c24);color:#180e04;font-weight:700;border:0;}
+  .search-title{flex:1}
+  .search-title h2{margin:0;font-size:32px;font-family:Georgia,"STKaiti","KaiTi",serif;color:#ffd88d;letter-spacing:.12em;}
+  .search-title p{margin:7px 0 0;color:#9fb1b8;font-size:13px;letter-spacing:.08em}
+  .search-box{display:flex;align-items:center;gap:12px;border:1px solid rgba(232,189,115,.42);background:rgba(0,0,0,.24);border-radius:18px;padding:12px 16px;box-shadow:0 0 24px rgba(232,189,115,.08) inset;}
+  .search-icon{font-size:21px;color:#ffd98d}
+  .search-input{flex:1;border:0;outline:0;background:transparent;color:#fff0c9;font-size:18px;letter-spacing:.08em;}
+  .search-input::placeholder{color:#8d9ca3}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;}
+  .chip{border:1px solid rgba(232,189,115,.32);background:rgba(232,189,115,.07);color:#d8c298;padding:8px 14px;border-radius:999px;cursor:pointer;font-size:13px;}
+  .chip.active,.chip:hover{background:rgba(232,189,115,.2);color:#ffe4ad;box-shadow:0 0 18px rgba(232,189,115,.12)}
+  .search-body{display:grid;grid-template-columns:1fr 330px;gap:20px;min-height:0;}
+  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;overflow:auto;padding-right:6px;}
+  .results::-webkit-scrollbar{width:7px} .results::-webkit-scrollbar-thumb{background:rgba(232,189,115,.38);border-radius:99px}
+  .result-card{position:relative;min-height:185px;border:1px solid rgba(232,189,115,.25);border-radius:18px;overflow:hidden;background:rgba(2,8,12,.62);cursor:pointer;box-shadow:0 10px 25px rgba(0,0,0,.25);}
+  .result-card:hover{border-color:rgba(255,219,145,.65);transform:translateY(-2px);transition:.18s ease;}
+  .result-card img{width:100%;height:108px;object-fit:cover;display:block;filter:saturate(1.06)}
+  .result-meta{padding:10px 12px 12px;}
+  .result-meta strong{display:block;color:#ffe0a4;font-size:16px;margin-bottom:5px;}
+  .result-meta span{font-size:12px;color:#9fafb9;}
+  .result-actions{position:absolute;right:10px;bottom:10px;display:flex;gap:6px;}
+  .result-actions button{height:26px;padding:0 9px;border-radius:999px;border:1px solid rgba(232,189,115,.34);background:rgba(0,0,0,.34);color:#f4d59c;cursor:pointer;font-size:12px;}
+  .search-side{border:1px solid rgba(232,189,115,.24);border-radius:18px;padding:18px;background:rgba(0,0,0,.22);overflow:hidden;}
+  .search-side h3{margin:0 0 12px;color:#ffd88d;font-size:18px;font-family:Georgia,"STKaiti","KaiTi",serif;letter-spacing:.12em;}
+  .side-line{display:flex;justify-content:space-between;border-bottom:1px solid rgba(232,189,115,.12);padding:10px 0;color:#b4c0c4;font-size:13px;}
+  .side-line b{color:#f3d396;font-weight:500}
+  .oracle-card{margin-top:18px;border:1px solid rgba(232,189,115,.22);border-radius:16px;padding:15px;background:linear-gradient(180deg,rgba(232,189,115,.09),rgba(0,0,0,.08));color:#c9b384;line-height:1.75;font-size:13px;}
+
+  /* 弹窗 */
+  .modal-mask{position:absolute;inset:0;z-index:30;display:none;place-items:center;background:rgba(0,0,0,.56);backdrop-filter:blur(8px);}
+  .modal-mask.active{display:grid;}
+  .detail-modal{position:relative;width:min(940px,78%);height:min(640px,78%);border:1px solid rgba(232,189,115,.48);border-radius:28px;background:linear-gradient(135deg,rgba(5,17,25,.95),rgba(12,25,32,.91));box-shadow:0 28px 90px rgba(0,0,0,.62),0 0 0 1px rgba(255,237,188,.08) inset;overflow:hidden;}
+  .detail-modal::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 28% 28%,rgba(232,189,115,.17),transparent 28%),radial-gradient(circle at 82% 15%,rgba(126,216,255,.12),transparent 23%);pointer-events:none;}
+  .modal-grid{position:relative;height:100%;display:grid;grid-template-columns:44% 56%;}
+  .modal-image{position:relative;margin:28px;border-radius:22px;overflow:hidden;border:1px solid rgba(232,189,115,.34);background:#03080d;}
+  .modal-image img{width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05)}
+  .modal-image::after{content:"局部影像 / 纹理拓片";position:absolute;left:14px;bottom:14px;padding:6px 10px;border:1px solid rgba(232,189,115,.42);border-radius:999px;background:rgba(0,0,0,.55);font-size:12px;color:#ffe0a2;}
+  .modal-info{position:relative;padding:32px 34px 28px 12px;display:flex;flex-direction:column;min-width:0;}
+  .modal-eyebrow{display:inline-flex;align-self:flex-start;padding:4px 10px;border:1px solid rgba(232,189,115,.42);border-radius:999px;color:#ffd78b;font-size:12px;letter-spacing:.18em;}
+  .modal-info h2{margin:16px 0 8px;font-size:34px;font-family:Georgia,"STKaiti","KaiTi",serif;color:#ffdc91;letter-spacing:.1em;}
+  .modal-info p{margin:0;color:#b4c1c5;line-height:1.85;font-size:14px;}
+  .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:18px 0;}
+  .stat{border:1px solid rgba(232,189,115,.2);border-radius:14px;padding:10px 12px;background:rgba(0,0,0,.22);}
+  .stat span{display:block;color:#8098a1;font-size:12px;margin-bottom:5px;}
+  .stat b{color:#f6d49a;font-weight:500;}
+  .modal-text{flex:1;overflow:auto;padding-right:8px;}
+  .modal-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  .close-x{position:absolute;right:18px;top:16px;z-index:3;width:36px;height:36px;border-radius:50%;border:1px solid rgba(232,189,115,.45);background:rgba(0,0,0,.28);color:#ffdaa0;font-size:22px;cursor:pointer;}
+  .close-x:hover{background:rgba(232,189,115,.16)}
+  .toast{position:absolute;left:50%;bottom:6%;z-index:70;transform:translateX(-50%) translateY(20px);opacity:0;padding:12px 18px;border:1px solid rgba(232,189,115,.45);background:rgba(4,13,19,.86);border-radius:999px;color:#ffe3ad;box-shadow:0 12px 32px rgba(0,0,0,.35);transition:.22s ease;}
+  .toast.active{opacity:1;transform:translateX(-50%) translateY(0);}
+
+
+
+  /* 3D 模型浮窗：把 GLB 模型接入到现有图片界面，不影响原热区 */
+  .model-dock{position:absolute;right:1.25%;top:13.2%;z-index:14;width:min(335px,22.5%);height:41.5%;min-height:310px;border:1px solid rgba(232,189,115,.42);border-radius:22px;background:linear-gradient(180deg,rgba(5,18,27,.78),rgba(2,8,12,.88));box-shadow:0 18px 55px rgba(0,0,0,.46),0 0 36px rgba(232,189,115,.10) inset;backdrop-filter:blur(12px);overflow:hidden;transition:.28s ease;}
+  .model-dock.collapsed{width:48px;height:160px;min-height:160px;border-radius:24px;overflow:hidden;}
+  .model-dock.collapsed .model-body,.model-dock.collapsed .model-meta,.model-dock.collapsed .model-switch{display:none;}
+  .model-head{height:45px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(232,189,115,.22);background:rgba(0,0,0,.22);}
+  .model-head strong{flex:1;color:#ffe0a4;font-size:14px;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .model-close{width:27px;height:27px;border:1px solid rgba(232,189,115,.38);background:rgba(232,189,115,.08);color:#ffdc91;border-radius:50%;cursor:pointer;}
+  .model-close:hover{background:rgba(232,189,115,.2)}
+  .model-pill{display:inline-grid;place-items:center;width:27px;height:27px;border-radius:50%;background:radial-gradient(circle,#ffe3a4,#9b6422);color:#160c04;font-weight:700;font-size:12px;box-shadow:0 0 18px rgba(232,189,115,.25)}
+  .model-body{position:relative;height:calc(100% - 135px);min-height:170px;}
+  .model-viewer{width:100%;height:100%;background:radial-gradient(circle at 50% 58%,rgba(232,189,115,.16),transparent 40%),linear-gradient(180deg,rgba(7,22,32,.45),rgba(0,0,0,.18));--poster-color:transparent;}
+  .model-body::after{content:"拖拽旋转 · 滚轮缩放";position:absolute;left:10px;bottom:8px;padding:4px 9px;border:1px solid rgba(232,189,115,.30);border-radius:999px;background:rgba(0,0,0,.42);color:#d6c091;font-size:11px;pointer-events:none;}
+  .model-fallback{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#cdb68a;font-size:12px;line-height:1.7;pointer-events:none;background:radial-gradient(circle,rgba(232,189,115,.08),transparent 58%);}
+  model-viewer:not(:defined)+.model-fallback{display:grid;}
+  model-viewer:defined+.model-fallback{display:none;}
+  .model-meta{padding:9px 12px 8px;color:#aebec4;font-size:12px;line-height:1.55;border-top:1px solid rgba(232,189,115,.15);}
+  .model-meta b{display:block;color:#ffd78b;font-weight:500;margin-bottom:2px;}
+  .model-switch{display:flex;gap:5px;flex-wrap:wrap;padding:0 10px 10px;}
+  .model-switch button{height:24px;padding:0 8px;border:1px solid rgba(232,189,115,.28);background:rgba(232,189,115,.06);color:#d8c298;border-radius:999px;font-size:11px;cursor:pointer;}
+  .model-switch button.active,.model-switch button:hover{background:rgba(232,189,115,.20);color:#ffe4ad;}
+  .model-hot-glow{position:absolute;right:24%;top:20%;width:20%;height:33%;border-radius:50%;background:radial-gradient(circle,rgba(255,220,140,.18),transparent 70%);filter:blur(1px);pointer-events:none;animation:modelPulse 3.2s ease-in-out infinite;z-index:4;}
+  @keyframes modelPulse{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:.8;transform:scale(1.06)}}
+  .detail-model-box{position:relative;height:162px;margin:14px 0;border:1px solid rgba(232,189,115,.22);border-radius:16px;overflow:hidden;background:rgba(0,0,0,.20);}
+  .detail-model-box model-viewer{width:100%;height:100%;--poster-color:transparent;background:radial-gradient(circle at center,rgba(232,189,115,.13),transparent 58%);}
+  .detail-model-tag{position:absolute;left:10px;top:9px;z-index:2;padding:4px 9px;border:1px solid rgba(232,189,115,.35);border-radius:999px;background:rgba(0,0,0,.42);color:#ffdc91;font-size:11px;pointer-events:none;}
+
+  /* 加载态 */
+  .loading-mask{position:absolute;inset:0;z-index:60;display:none;place-items:center;background:radial-gradient(circle at 50% 50%,rgba(232,189,115,.18),rgba(0,0,0,.68) 48%,rgba(0,0,0,.88));backdrop-filter:blur(7px);}
+  .loading-mask.active{display:grid;}
+  .loader{width:min(420px,44%);text-align:center;}
+  .loader-ring{position:relative;width:168px;height:168px;margin:0 auto 22px;border-radius:50%;border:1px solid rgba(232,189,115,.25);}
+  .loader-ring::before,.loader-ring::after{content:"";position:absolute;border-radius:50%;inset:10px;border:2px solid transparent;border-top-color:#ffd885;border-right-color:rgba(126,216,255,.55);animation:spin 1.3s linear infinite;}
+  .loader-ring::after{inset:32px;border-top-color:rgba(255,255,255,.85);border-right-color:rgba(232,189,115,.2);animation-duration:2.1s;animation-direction:reverse;}
+  .loader-seal{position:absolute;inset:54px;display:grid;place-items:center;border-radius:50%;background:rgba(232,189,115,.13);border:1px solid rgba(232,189,115,.38);color:#ffe1a3;font-family:Georgia,"STKaiti","KaiTi",serif;font-size:28px;box-shadow:0 0 22px rgba(232,189,115,.14) inset;}
+  .loader h3{margin:0 0 10px;font-size:22px;font-family:Georgia,"STKaiti","KaiTi",serif;letter-spacing:.18em;color:#ffdc91;}
+  .loader p{margin:0 0 18px;color:#aebec4;font-size:13px;letter-spacing:.1em;}
+  .loadbar{height:5px;background:rgba(232,189,115,.15);border-radius:999px;overflow:hidden;}
+  .loadbar span{display:block;height:100%;width:45%;background:linear-gradient(90deg,transparent,#ffda8a,#fff4c7);animation:scan 1.1s ease-in-out infinite;}
+
+  @media (max-width:900px){
+    .search-shell{inset:3%;padding:18px;}
+    .search-body{grid-template-columns:1fr;}
+    .search-side{display:none}
+    .results{grid-template-columns:repeat(2,1fr)}
+    .detail-modal{width:90%;height:82%;}
+    .modal-grid{grid-template-columns:1fr;grid-template-rows:40% 60%;}
+    .modal-image{margin:18px 18px 0;}
+    .modal-info{padding:18px;}
+    .quick-nav{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app"><div id="stage" class="stage"></div></div>
+<script>
+const PAGES = [
+  {
+    "id": "home",
+    "title": "山海浮卷 · 首页",
+    "shortTitle": "首页",
+    "source": "首页.png",
+    "asset": "assets/p00.png",
+    "group": "首页",
+    "subtitle": "互动式山海经百科全书",
+    "kind": "home",
+    "index": 0
+  },
+  {
+    "id": "p01",
+    "title": "东山经1",
+    "shortTitle": "东山经1",
+    "source": "东山经1.png",
+    "asset": "assets/p01.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 1
+  },
+  {
+    "id": "p02",
+    "title": "东山经2",
+    "shortTitle": "东山经2",
+    "source": "东山经2.png",
+    "asset": "assets/p02.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 2
+  },
+  {
+    "id": "p03",
+    "title": "东山经3",
+    "shortTitle": "东山经3",
+    "source": "东山经3.png",
+    "asset": "assets/p03.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 3
+  },
+  {
+    "id": "p04",
+    "title": "南山经1",
+    "shortTitle": "南山经1",
+    "source": "南山经1.png",
+    "asset": "assets/p04.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 4
+  },
+  {
+    "id": "p05",
+    "title": "南山经2",
+    "shortTitle": "南山经2",
+    "source": "南山经2.png",
+    "asset": "assets/p05.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 5
+  },
+  {
+    "id": "p06",
+    "title": "南山经3",
+    "shortTitle": "南山经3",
+    "source": "南山经3.png",
+    "asset": "assets/p06.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 6
+  },
+  {
+    "id": "p07",
+    "title": "西山经1",
+    "shortTitle": "西山经1",
+    "source": "西山经1.png",
+    "asset": "assets/p07.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 7
+  },
+  {
+    "id": "p08",
+    "title": "西山经2",
+    "shortTitle": "西山经2",
+    "source": "西山经2.png",
+    "asset": "assets/p08.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 8
+  },
+  {
+    "id": "p09",
+    "title": "西山经3",
+    "shortTitle": "西山经3",
+    "source": "西山经3.png",
+    "asset": "assets/p09.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 9
+  },
+  {
+    "id": "p10",
+    "title": "北山经1",
+    "shortTitle": "北山经1",
+    "source": "北山经1.png",
+    "asset": "assets/p10.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 10
+  },
+  {
+    "id": "p11",
+    "title": "北山经2",
+    "shortTitle": "北山经2",
+    "source": "北山经2.png",
+    "asset": "assets/p11.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 11
+  },
+  {
+    "id": "p12",
+    "title": "北山经3",
+    "shortTitle": "北山经3",
+    "source": "北山经3.png",
+    "asset": "assets/p12.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 12
+  },
+  {
+    "id": "p13",
+    "title": "中山经1",
+    "shortTitle": "中山经1",
+    "source": "中山经1.png",
+    "asset": "assets/p13.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 13
+  },
+  {
+    "id": "p14",
+    "title": "中山经2",
+    "shortTitle": "中山经2",
+    "source": "中山经2.png",
+    "asset": "assets/p14.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 14
+  },
+  {
+    "id": "p15",
+    "title": "中山经3",
+    "shortTitle": "中山经3",
+    "source": "中山经3.png",
+    "asset": "assets/p15.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 15
+  },
+  {
+    "id": "p16",
+    "title": "海内经",
+    "shortTitle": "海内经",
+    "source": "海内经.png",
+    "asset": "assets/p16.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 16
+  },
+  {
+    "id": "p17",
+    "title": "海内经2",
+    "shortTitle": "海内经2",
+    "source": "海内经2.png",
+    "asset": "assets/p17.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 17
+  },
+  {
+    "id": "p18",
+    "title": "海内经3",
+    "shortTitle": "海内经3",
+    "source": "海内经3.png",
+    "asset": "assets/p18.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 18
+  },
+  {
+    "id": "p19",
+    "title": "海外经1",
+    "shortTitle": "海外经1",
+    "source": "海外经1.png",
+    "asset": "assets/p19.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 19
+  },
+  {
+    "id": "p20",
+    "title": "海外经2",
+    "shortTitle": "海外经2",
+    "source": "海外经2.png",
+    "asset": "assets/p20.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 20
+  },
+  {
+    "id": "p21",
+    "title": "海外经3",
+    "shortTitle": "海外经3",
+    "source": "海外经3.png",
+    "asset": "assets/p21.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 21
+  },
+  {
+    "id": "p22",
+    "title": "大荒经1",
+    "shortTitle": "大荒经1",
+    "source": "大荒经1.png",
+    "asset": "assets/p22.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 22
+  },
+  {
+    "id": "p23",
+    "title": "大荒经2",
+    "shortTitle": "大荒经2",
+    "source": "大荒经2.png",
+    "asset": "assets/p23.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 23
+  },
+  {
+    "id": "p24",
+    "title": "大荒经3",
+    "shortTitle": "大荒经3",
+    "source": "大荒经3.png",
+    "asset": "assets/p24.png",
+    "group": "山海疆域",
+    "subtitle": "山川脉络 / 异兽节点 / 地图索引",
+    "kind": "map",
+    "index": 24
+  },
+  {
+    "id": "p25",
+    "title": "神木灵植1",
+    "shortTitle": "神木灵植1",
+    "source": "神木灵植1.png",
+    "asset": "assets/p25.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 25
+  },
+  {
+    "id": "p26",
+    "title": "神木灵植2",
+    "shortTitle": "神木灵植2",
+    "source": "神木灵植2.png",
+    "asset": "assets/p26.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 26
+  },
+  {
+    "id": "p27",
+    "title": "神木灵植3",
+    "shortTitle": "神木灵植3",
+    "source": "神木灵植3.png",
+    "asset": "assets/p27.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 27
+  },
+  {
+    "id": "p28",
+    "title": "神木灵植4",
+    "shortTitle": "神木灵植4",
+    "source": "神木灵植4.png",
+    "asset": "assets/p28.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 28
+  },
+  {
+    "id": "p29",
+    "title": "神木灵植5",
+    "shortTitle": "神木灵植5",
+    "source": "神木灵植5.png",
+    "asset": "assets/p29.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 29
+  },
+  {
+    "id": "p30",
+    "title": "神木灵植6",
+    "shortTitle": "神木灵植6",
+    "source": "神木灵植6.png",
+    "asset": "assets/p30.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 30
+  },
+  {
+    "id": "p31",
+    "title": "神木灵植7",
+    "shortTitle": "神木灵植7",
+    "source": "神木灵植7.png",
+    "asset": "assets/p31.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 31
+  },
+  {
+    "id": "p32",
+    "title": "神木灵植8",
+    "shortTitle": "神木灵植8",
+    "source": "神木灵植8.png",
+    "asset": "assets/p32.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 32
+  },
+  {
+    "id": "p33",
+    "title": "神木灵植9",
+    "shortTitle": "神木灵植9",
+    "source": "神木灵植9.png",
+    "asset": "assets/p33.png",
+    "group": "神木灵植",
+    "subtitle": "灵植档案 / 生长纹理 / 功能图谱",
+    "kind": "plant",
+    "index": 33
+  },
+  {
+    "id": "p34",
+    "title": "神话图谱1",
+    "shortTitle": "神话图谱1",
+    "source": "神话图谱1.png",
+    "asset": "assets/p34.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 34
+  },
+  {
+    "id": "p35",
+    "title": "神话图谱2",
+    "shortTitle": "神话图谱2",
+    "source": "神话图谱2.png",
+    "asset": "assets/p35.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 35
+  },
+  {
+    "id": "p36",
+    "title": "神话图谱3",
+    "shortTitle": "神话图谱3",
+    "source": "神话图谱3.png",
+    "asset": "assets/p36.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 36
+  },
+  {
+    "id": "p37",
+    "title": "神话图谱4",
+    "shortTitle": "神话图谱4",
+    "source": "神话图谱4.png",
+    "asset": "assets/p37.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 37
+  },
+  {
+    "id": "p38",
+    "title": "神话图谱5",
+    "shortTitle": "神话图谱5",
+    "source": "神话图谱5.png",
+    "asset": "assets/p38.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 38
+  },
+  {
+    "id": "p39",
+    "title": "神话图谱6",
+    "shortTitle": "神话图谱6",
+    "source": "神话图谱6.png",
+    "asset": "assets/p39.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 39
+  },
+  {
+    "id": "p40",
+    "title": "神话图谱7",
+    "shortTitle": "神话图谱7",
+    "source": "神话图谱7.png",
+    "asset": "assets/p40.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 40
+  },
+  {
+    "id": "p41",
+    "title": "神话图谱8",
+    "shortTitle": "神话图谱8",
+    "source": "神话图谱8.png",
+    "asset": "assets/p41.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 41
+  },
+  {
+    "id": "p42",
+    "title": "神话图谱9",
+    "shortTitle": "神话图谱9",
+    "source": "神话图谱9.png",
+    "asset": "assets/p42.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 42
+  },
+  {
+    "id": "p43",
+    "title": "神话图谱10",
+    "shortTitle": "神话图谱10",
+    "source": "神话图谱10.png",
+    "asset": "assets/p43.png",
+    "group": "神话谱系",
+    "subtitle": "神话关系 / 谱系节点 / 传说追踪",
+    "kind": "myth",
+    "index": 43
+  },
+  {
+    "id": "p44",
+    "title": "我的印记1",
+    "shortTitle": "我的印记1",
+    "source": "我的印记1.png",
+    "asset": "assets/p44.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 44
+  },
+  {
+    "id": "p45",
+    "title": "我的印记2",
+    "shortTitle": "我的印记2",
+    "source": "我的印记2.png",
+    "asset": "assets/p45.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 45
+  },
+  {
+    "id": "p46",
+    "title": "我的印记3",
+    "shortTitle": "我的印记3",
+    "source": "我的印记3.png",
+    "asset": "assets/p46.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 46
+  },
+  {
+    "id": "p47",
+    "title": "我的印记4",
+    "shortTitle": "我的印记4",
+    "source": "我的印记4.png",
+    "asset": "assets/p47.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 47
+  },
+  {
+    "id": "p48",
+    "title": "我的印记5",
+    "shortTitle": "我的印记5",
+    "source": "我的印记5.png",
+    "asset": "assets/p48.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 48
+  },
+  {
+    "id": "p49",
+    "title": "我的印记6",
+    "shortTitle": "我的印记6",
+    "source": "我的印记6.png",
+    "asset": "assets/p49.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 49
+  },
+  {
+    "id": "p50",
+    "title": "我的印记7",
+    "shortTitle": "我的印记7",
+    "source": "我的印记7.png",
+    "asset": "assets/p50.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 50
+  },
+  {
+    "id": "p51",
+    "title": "我的印记8",
+    "shortTitle": "我的印记8",
+    "source": "我的印记8.png",
+    "asset": "assets/p51.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 51
+  },
+  {
+    "id": "p52",
+    "title": "我的印记9",
+    "shortTitle": "我的印记9",
+    "source": "我的印记9.png",
+    "asset": "assets/p52.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 52
+  },
+  {
+    "id": "p53",
+    "title": "我的印记10",
+    "shortTitle": "我的印记10",
+    "source": "我的印记10.png",
+    "asset": "assets/p53.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 收藏印记 / 个人路径",
+    "kind": "mark",
+    "index": 53
+  },
+  {
+    "id": "p54",
+    "title": "我的印记11",
+    "shortTitle": "我的印记11",
+    "source": "印记补充1.webp",
+    "asset": "assets/p54.webp",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 补充图卷 / 个人路径",
+    "kind": "mark",
+    "index": 54
+  },
+  {
+    "id": "p55",
+    "title": "我的印记12",
+    "shortTitle": "我的印记12",
+    "source": "印记补充2.png",
+    "asset": "assets/p55.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 补充图卷 / 个人路径",
+    "kind": "mark",
+    "index": 55
+  },
+  {
+    "id": "p56",
+    "title": "我的印记13",
+    "shortTitle": "我的印记13",
+    "source": "印记补充3.png",
+    "asset": "assets/p56.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 补充图卷 / 个人路径",
+    "kind": "mark",
+    "index": 56
+  },
+  {
+    "id": "p57",
+    "title": "我的印记14",
+    "shortTitle": "我的印记14",
+    "source": "印记补充4.png",
+    "asset": "assets/p57.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 补充图卷 / 个人路径",
+    "kind": "mark",
+    "index": 57
+  },
+  {
+    "id": "p58",
+    "title": "我的印记15",
+    "shortTitle": "我的印记15",
+    "source": "印记补充5.png",
+    "asset": "assets/p58.png",
+    "group": "我的印记",
+    "subtitle": "探索记录 / 补充图卷 / 个人路径",
+    "kind": "mark",
+    "index": 58
+  }
+];
+const ROUTES = {
+  "home": "home",
+  "map": "p01",
+  "beast": "p04",
+  "plant": "p25",
+  "myth": "p34",
+  "mark": "p44",
+  "classic": "p16",
+  "east": "p01",
+  "south": "p04",
+  "west": "p07",
+  "north": "p10",
+  "middle": "p13",
+  "inside": "p16",
+  "outside": "p19",
+  "wild": "p22"
+};
+const pageById = Object.fromEntries(PAGES.map(p => [p.id, p]));
+let currentPage = pageById.home;
+let hotspotVisible = false;
+let activeFilter = '全部';
+let query = '';
+let lastPageBeforeSearch = 'home';
+let modelDockCollapsed = false;
+let selectedModelKey = 'auto';
+const loadingTexts = ['卷轴正在展开','灵纹索引中','异兽档案校验中','山海节点连接中','正在召回探索印记','正在切换分卷界面'];
+const nodeLabels = ['异兽节点','山川纹理','灵光坐标','古籍条目','纹样拓片','关系线索','地貌注释','采集印记','隐藏彩蛋','详情卡片'];
+
+const MODEL_LIBRARY = {
+  auto:{label:'自动匹配', src:'', note:'根据当前图片界面自动切换 3D 模型'},
+  combined:{label:'首页整合场景', src:'models/00_combined_shanhai_home_scene.glb', note:'卷轴、神木、异兽浮雕、疆域地图组合成首页展陈场景'},
+  scroll:{label:'山海经卷轴', src:'models/01_shanhai_scroll_home.glb', note:'卷轴、金边、题签、山纹墨线与热点光环'},
+  tree:{label:'神木 3D 模型', src:'models/02_sacred_tree_shenmu.glb', note:'树干、枝冠、根系、灵果、萤火粒子与能量环'},
+  beast:{label:'异兽浮雕模型', src:'models/03_mythic_beast_relief.glb', note:'石板兽首、兽角、獠牙、符文边框与灵光环'},
+  territory:{label:'山海疆域立体地图', src:'models/04_shanhai_territory_map.glb', note:'抽象地形、山峰、河流、路径节点与悬浮轨道'}
+};
+function autoModelKeyForPage(p){
+  if(!p || p.id==='home') return 'combined';
+  if(p.group==='神木灵植') return 'tree';
+  if(p.group==='神话谱系') return 'beast';
+  if(p.group==='我的印记') return 'scroll';
+  return 'territory';
+}
+function currentModelKey(p){ return selectedModelKey==='auto' ? autoModelKeyForPage(p) : selectedModelKey; }
+function modelLabel(key){ return (MODEL_LIBRARY[key]||MODEL_LIBRARY.combined).label; }
+function modelDock(p=currentPage||pageById.home){
+  const key = currentModelKey(p);
+  const model = MODEL_LIBRARY[key] || MODEL_LIBRARY.combined;
+  const autoKey = autoModelKeyForPage(p);
+  const switchItems = [['auto','自动'],['combined','首页'],['territory','疆域'],['tree','神木'],['beast','异兽'],['scroll','卷轴']];
+  return `<aside id="modelDock" class="model-dock ${modelDockCollapsed?'collapsed':''}">
+    <div class="model-head"><span class="model-pill">3D</span><strong>${model.label}</strong><button class="model-close" onclick="toggleModelDock()">${modelDockCollapsed?'展':'—'}</button></div>
+    <div class="model-body">
+      <model-viewer class="model-viewer" src="${model.src}" camera-controls auto-rotate rotation-per-second="22deg" exposure="1.08" shadow-intensity="1" interaction-prompt="none" loading="eager"></model-viewer>
+      <div class="model-fallback"><div><b>3D 模型加载中</b><br>如果无法显示，请保持联网以加载 model-viewer，或直接打开 models 文件夹中的 GLB。</div></div>
+    </div>
+    <div class="model-meta"><b>当前匹配：${selectedModelKey==='auto'?modelLabel(autoKey):'手动选择'}</b>${model.note}</div>
+    <div class="model-switch">${switchItems.map(([k,t])=>`<button class="${selectedModelKey===k?'active':''}" onclick="setModelKey('${k}')">${t}</button>`).join('')}</div>
+  </aside>`;
+}
+function setModelKey(key){ selectedModelKey = key; const dock=document.getElementById('modelDock'); if(dock) dock.outerHTML = modelDock(currentPage||pageById.home); showToast(key==='auto'?'3D 模型已恢复自动匹配':'已切换为 '+modelLabel(key)); }
+function toggleModelDock(){ modelDockCollapsed = !modelDockCollapsed; const dock=document.getElementById('modelDock'); if(dock) dock.classList.toggle('collapsed', modelDockCollapsed); }
+
+
+function stage(){ return document.getElementById('stage'); }
+function pct(n){ return n + '%'; }
+function hs(label, x, y, w, h, action, cls=''){
+  return `<button class="hotspot ${cls}" style="left:${pct(x)};top:${pct(y)};width:${pct(w)};height:${pct(h)}" title="${label}" onclick="${action}"><span class="hot-label">${label}</span></button>`;
+}
+function baseControls(){
+  return `<div class="devbar">
+    <button class="mini-btn" onclick="renderSplash()">启动页</button>
+    <button class="mini-btn" onclick="openSearch()">搜索页</button>
+    <button class="mini-btn" onclick="demoLoading()">加载态</button>
+    <button class="mini-btn" onclick="toggleHotspots()">热区</button>
+    <button class="mini-btn" onclick="toggleModelDock()">3D模型</button>
+  </div>`;
+}
+function quickNav(){
+  const items=[['首页','home'],['疆域',ROUTES.map],['异兽',ROUTES.beast],['灵植',ROUTES.plant],['谱系',ROUTES.myth],['印记',ROUTES.mark]];
+  return `<div class="quick-nav">${items.map(([t,id])=>`<button class="${currentPage && currentPage.id===id?'active':''}" onclick="gotoPage('${id}')">${t}</button>`).join('')}</div>`;
+}
+function overlays(){ return `<div id="loading" class="loading-mask"></div><div id="modal" class="modal-mask"></div><div id="toast" class="toast"></div>`; }
+
+function renderSplash(){
+  stage().className = 'stage';
+  stage().innerHTML = `
+    <section class="splash">
+      <div class="splash-bg"></div><div class="stars"></div>
+      <div class="splash-core"><div class="ring"></div><div class="ring r2"></div><div class="ring r3"></div></div>
+      <div class="splash-title"><h1>山海浮卷</h1><p>互动式山海经百科全书</p></div>
+      <div class="splash-card">
+        <span class="seal">启动页 · START</span>
+        <p>全界面已补全并接入 3D：启动页、搜索页、详细弹窗、加载态、全部图片热区，以及卷轴、神木、异兽浮雕、立体地图模型。</p>
+        <button class="enter-btn" onclick="enterWorld()">开启山海探索 →</button>
+      </div>
+      <div class="splash-progress"><span></span></div>
+      ${modelDock(pageById.home)}<div class="model-hot-glow"></div>${baseControls()}${overlays()}
+    </section>`;
+  applyHotspotClass();
+}
+function enterWorld(){ showLoading('山海卷轴初始化', () => renderPage('home')); }
+function renderPage(id){
+  const p = pageById[id] || pageById.home;
+  currentPage = p;
+  lastPageBeforeSearch = p.id;
+  const img = `<img class="page-img" src="${p.asset}" alt="${p.title}"><div class="dim"></div>`;
+  let info = p.id==='home' ? '' : `<div class="ui-breadcrumb">${p.group} / ${p.shortTitle}</div><div class="page-counter">${p.index} / ${PAGES.length-1}</div>`;
+  stage().innerHTML = img + info + hotspotsFor(p) + quickNav() + modelDock(p) + baseControls() + overlays();
+  applyHotspotClass();
+  if(location.hash !== '#'+p.id) window.history.replaceState(null, '', '#'+p.id);
+}
+function gotoPage(id){
+  if(!pageById[id]) return;
+  showLoading(loadingTexts[Math.floor(Math.random()*loadingTexts.length)], () => renderPage(id));
+}
+function openSearch(){ lastPageBeforeSearch = currentPage && currentPage.id ? currentPage.id : 'home'; showLoading('山海索引唤醒中', renderSearch); }
+function demoLoading(){ showLoading('加载态演示 · 山海节点连接中', () => showToast('加载态已完成')); }
+function showLoading(text, done){
+  let mask = document.getElementById('loading');
+  if(!mask){ stage().insertAdjacentHTML('beforeend', `<div id="loading" class="loading-mask"></div>`); mask = document.getElementById('loading'); }
+  mask.innerHTML = `<div class="loader"><div class="loader-ring"><div class="loader-seal">山</div></div><h3>${text}</h3><p>请稍候，灵纹正在重组界面结构</p><div class="loadbar"><span></span></div></div>`;
+  mask.classList.add('active');
+  setTimeout(() => { mask.classList.remove('active'); if(done) done(); }, 620);
+}
+function toggleHotspots(){ hotspotVisible = !hotspotVisible; applyHotspotClass(); }
+function applyHotspotClass(){ stage().classList.toggle('show-hotspots', hotspotVisible); }
+
+function hotspotsFor(p){
+  const top = [
+    hs('返回首页', 19.6, 2.2, 8.8, 5.8, "gotoPage('home')"),
+    hs('山海疆域', 31.0, 2.5, 9.5, 5.0, `gotoPage('${ROUTES.map}')`),
+    hs('异兽图鉴', 42.6, 2.5, 9.7, 5.0, `gotoPage('${ROUTES.beast}')`),
+    hs('神木灵植', 53.6, 2.5, 9.7, 5.0, `gotoPage('${ROUTES.plant}')`),
+    hs('神话谱系', 64.5, 2.5, 9.7, 5.0, `gotoPage('${ROUTES.myth}')`),
+    hs('我的印记', 75.4, 2.5, 9.4, 5.0, `gotoPage('${ROUTES.mark}')`),
+    hs('搜索全界面', 85.7, 1.8, 4.0, 6.4, 'openSearch()'),
+    hs('全局消息详情', 90.5, 1.8, 3.9, 6.4, `openDetail(currentPage.id,'消息 / 探索提示')`),
+    hs('用户/设置弹窗', 95.0, 1.8, 3.4, 6.4, `openDetail(currentPage.id,'用户印记 / 设置')`)
+  ].join('');
+  if(p.id === 'home') return top + homeHotspots();
+  if(p.kind === 'plant') return top + chapterNav() + plantHotspots(p) + bottomHotspots(p);
+  if(p.kind === 'myth') return top + chapterNav() + mythHotspots(p) + bottomHotspots(p);
+  if(p.kind === 'mark') return top + chapterNav() + markHotspots(p) + bottomHotspots(p);
+  return top + chapterNav() + mapHotspots(p) + bottomHotspots(p);
+}
+function homeHotspots(){
+  return [
+    hs('开启山海探索', 39.5, 65.6, 22.2, 7.7, `gotoPage('${ROUTES.map}')`, 'panel'),
+    hs('今日山海 · 查看详情', 80.0, 31.2, 9.0, 4.4, `openDetail('home','鹿蜀 · 今日山海')`, 'panel'),
+    hs('右上信息卡详情', 78.4, 21.0, 19.3, 27.5, `openDetail('home','首页信息卡')`, 'panel'),
+    hs('山海疆域入口', 80.3, 55.2, 8.8, 10.4, `gotoPage('${ROUTES.map}')`, 'panel'),
+    hs('异兽图鉴入口', 89.2, 55.2, 8.4, 10.4, `gotoPage('${ROUTES.beast}')`, 'panel'),
+    hs('神木灵植入口', 80.3, 65.7, 8.8, 10.2, `gotoPage('${ROUTES.plant}')`, 'panel'),
+    hs('典籍文献搜索', 89.2, 65.7, 8.4, 10.2, 'openSearch()', 'panel'),
+    hs('神话谱系入口', 59.5, 78.0, 16.5, 15.0, `gotoPage('${ROUTES.myth}')`, 'panel'),
+    hs('我的印记入口', 76.2, 78.0, 21.8, 15.0, `gotoPage('${ROUTES.mark}')`, 'panel'),
+    hs('山海疆域底部卡片', 2.0, 78.0, 19.6, 15.0, `gotoPage('${ROUTES.map}')`, 'panel'),
+    hs('异兽图鉴底部卡片', 21.9, 78.0, 19.1, 15.0, `gotoPage('${ROUTES.beast}')`, 'panel'),
+    hs('神木灵植底部卡片', 41.4, 78.0, 17.8, 15.0, `gotoPage('${ROUTES.plant}')`, 'panel'),
+    hs('底部典籍搜索', 4.0, 96.0, 8.6, 3.0, 'openSearch()'),
+    hs('意见反馈弹窗', 87.0, 96.0, 6.0, 3.0, `openDetail('home','反馈与提示')`)
+  ].join('');
+}
+function chapterNav(){
+  let groupNav = '';
+  const leftRoutes = [
+    ['东山经',ROUTES.east],['南山经',ROUTES.south],['西山经',ROUTES.west],['北山经',ROUTES.north],['中山经',ROUTES.middle],
+    ['海内经',ROUTES.inside],['海外经',ROUTES.outside],['大荒经',ROUTES.wild],['神木灵植',ROUTES.plant],['神话谱系',ROUTES.myth],['我的印记',ROUTES.mark]
+  ];
+  leftRoutes.forEach((r,i)=>{ groupNav += hs(r[0], 1.35, 12.7 + i*5.02, 13.45, 4.08, `gotoPage('${r[1]}')`, 'panel'); });
+  return groupNav;
+}
+function relatedPages(p){ return PAGES.filter(x=>x.id!=='home' && x.group===p.group); }
+function linkedByKind(p, count=10){
+  const arr = relatedPages(p); const i = Math.max(0, arr.findIndex(x=>x.id===p.id));
+  const res=[]; for(let k=0;k<Math.min(count,arr.length);k++) res.push(arr[(i+k)%arr.length]); return res;
+}
+function bottomHotspots(p){
+  let bottom='';
+  linkedByKind(p,10).forEach((x,i)=>{ bottom += hs(x.shortTitle, 4.1 + i*8.85, 83.5, 8.15, 8.35, `gotoPage('${x.id}')`, 'panel'); });
+  bottom += hs('上一界面', 43.5, 94.0, 3.0, 4.0, 'gotoNeighbor(-1)', 'panel');
+  bottom += hs('下一界面', 53.5, 94.0, 3.0, 4.0, 'gotoNeighbor(1)', 'panel');
+  return bottom;
+}
+function mapHotspots(p){
+  const targets = linkedByKind(p,8);
+  const coords = [[42,24,5,7],[52,23,5,7],[62,32,5,7],[60,48,5,7],[50,58,5,7],[39,52,5,7],[33,38,5,7],[48,39,6,8]];
+  let html = '';
+  coords.forEach((c,i)=>{ const t=targets[i%targets.length]; html += hs(nodeLabels[i]+' · '+t.shortTitle, c[0], c[1], c[2], c[3], `openDetail('${t.id}','${nodeLabels[i]}')`, 'node'); });
+  html += hs('中心档案 · 查看详情', 39.0, 31.0, 23.5, 23.5, `openDetail('${p.id}')`, 'panel');
+  html += hs('右侧图文详情', 79.4, 12.5, 18.0, 31.8, `openDetail('${p.id}','图文档案')`, 'panel');
+  html += hs('右侧数据面板', 79.4, 45.5, 18.0, 26.5, `openDetail('${p.id}','数据与纹样解析')`, 'panel');
+  html += hs('当前卷搜索', 15.8, 9.2, 10.0, 4.4, 'openSearch()', 'panel');
+  return html;
+}
+function plantHotspots(p){
+  const targets = linkedByKind(p,9);
+  const coords = [[45,18,8,10],[37,28,7,9],[53,29,7,9],[33,44,7,9],[48,44,8,10],[63,43,7,9],[38,60,8,10],[55,61,8,10],[46,72,8,8]];
+  let html='';
+  coords.forEach((c,i)=>{ const t=targets[i%targets.length]; html += hs('灵植节点 · '+t.shortTitle, c[0], c[1], c[2], c[3], `openDetail('${t.id}','灵植节点解析')`, 'node'); });
+  html += hs('中央神木详情', 36.5, 20.0, 30.5, 54.0, `openDetail('${p.id}','神木整体档案')`, 'panel');
+  html += hs('右侧生长档案', 77.8, 12.0, 20.0, 31.5, `openDetail('${p.id}','生长环境与纹理')`, 'panel');
+  html += hs('右侧功能图谱', 77.8, 45.0, 20.0, 27.0, `openDetail('${p.id}','功效与神话寓意')`, 'panel');
+  html += hs('搜索灵植', 15.8, 9.2, 10.0, 4.4, 'openSearch()', 'panel');
+  return html;
+}
+function mythHotspots(p){
+  const targets = linkedByKind(p,10);
+  const coords = [[48,30,8,10],[36,20,7,9],[60,20,7,9],[28,38,7,9],[68,38,7,9],[35,58,7,9],[60,58,7,9],[48,69,7,9],[43,45,6,8],[56,45,6,8]];
+  let html='';
+  coords.forEach((c,i)=>{ const t=targets[i%targets.length]; html += hs('谱系节点 · '+t.shortTitle, c[0], c[1], c[2], c[3], `openDetail('${t.id}','谱系节点关系')`, 'node'); });
+  html += hs('中央谱系核心', 39.8, 24.0, 24.0, 44.0, `openDetail('${p.id}','核心谱系详情')`, 'panel');
+  html += hs('右侧故事卡片', 77.8, 12.2, 20.0, 31.5, `openDetail('${p.id}','神话故事片段')`, 'panel');
+  html += hs('右侧关系数据', 77.8, 45.0, 20.0, 27.0, `openDetail('${p.id}','关系链路解析')`, 'panel');
+  html += hs('搜索谱系', 15.8, 9.2, 10.0, 4.4, 'openSearch()', 'panel');
+  return html;
+}
+function markHotspots(p){
+  const targets = linkedByKind(p,10);
+  const coords = [[22,18,14,16],[39,18,14,16],[56,18,14,16],[22,39,14,16],[39,39,14,16],[56,39,14,16],[22,60,14,16],[39,60,14,16],[56,60,14,16]];
+  let html='';
+  coords.forEach((c,i)=>{ const t=targets[i%targets.length]; html += hs('印记卡片 · '+t.shortTitle, c[0], c[1], c[2], c[3], `openDetail('${t.id}','我的印记卡片')`, 'panel'); });
+  html += hs('个人进度详情', 77.8, 12.4, 20.0, 31.5, `openDetail('${p.id}','个人探索进度')`, 'panel');
+  html += hs('收藏/徽章详情', 77.8, 45.0, 20.0, 27.0, `openDetail('${p.id}','收藏与徽章')`, 'panel');
+  html += hs('搜索我的印记', 15.8, 9.2, 10.0, 4.4, 'openSearch()', 'panel');
+  return html;
+}
+function gotoNeighbor(step){
+  const ids = PAGES.filter(p=>p.id!=='home').map(p=>p.id);
+  let i = ids.indexOf(currentPage.id); if(i<0) i=0;
+  gotoPage(ids[(i+step+ids.length)%ids.length]);
+}
+
+function renderSearch(){
+  stage().className = 'stage';
+  stage().innerHTML = `
+    <section class="search-page">
+      <div class="search-shell">
+        <div class="search-head">
+          <button class="back-btn" onclick="gotoPage(lastPageBeforeSearch || 'home')">← 返回界面</button>
+          <div class="search-title"><h2>山海检索司</h2><p>搜索页 · 已接入全部 ${PAGES.length-1} 个界面，可按分卷、灵植、谱系、印记定位，并直接打开详情弹窗</p></div>
+          <button class="ghost-btn" onclick="renderSplash()">启动页</button>
+        </div>
+        <div>
+          <div class="search-box"><span class="search-icon">⌕</span><input id="searchInput" class="search-input" placeholder="输入：东山经 / 海外经 / 神木 / 图谱 / 印记 ..." value="${query}" oninput="query=this.value; updateResults()" autofocus><button class="solid-btn" onclick="updateResults()">检索</button></div>
+          <div id="chips" class="chips" style="margin-top:12px"></div>
+        </div>
+        <div class="search-body"><div id="results" class="results"></div><aside class="search-side"><h3>检索状态</h3><div id="searchStats"></div><div class="oracle-card">搜索结果覆盖首页以外的全部界面图片。点击卡片进入页面，点击“详情”打开详细弹窗；弹窗内可继续跳转、加入印记或回到搜索。</div></aside></div>
+      </div>
+      ${modelDock(currentPage||pageById.home)}${baseControls()}${overlays()}
+    </section>`;
+  renderChips(); updateResults(); applyHotspotClass();
+  setTimeout(()=>{ const i=document.getElementById('searchInput'); if(i) i.focus(); },50);
+}
+function renderChips(){
+  const groups = ['全部','山海疆域','神木灵植','神话谱系','我的印记'];
+  const chips = document.getElementById('chips');
+  chips.innerHTML = groups.map(g=>`<button class="chip ${activeFilter===g?'active':''}" onclick="activeFilter='${g}'; renderChips(); updateResults();">${g}</button>`).join('');
+}
+function updateResults(){
+  const q = (query||'').trim().toLowerCase();
+  let list = PAGES.filter(p=>p.id!=='home');
+  if(activeFilter!=='全部') list = list.filter(p=>p.group===activeFilter);
+  if(q) list = list.filter(p => (p.title+p.shortTitle+p.group+p.subtitle+p.source).toLowerCase().includes(q));
+  const results = document.getElementById('results');
+  if(!results) return;
+  results.innerHTML = list.map(p=>`
+    <article class="result-card" onclick="gotoPage('${p.id}')">
+      <img src="${p.asset}" alt="${p.title}">
+      <div class="result-meta"><strong>${p.shortTitle}</strong><span>${p.group} · ${p.subtitle}</span></div>
+      <div class="result-actions"><button onclick="event.stopPropagation(); openDetail('${p.id}')">详情</button><button onclick="event.stopPropagation(); gotoPage('${p.id}')">进入</button></div>
+    </article>`).join('') || `<div style="grid-column:1/-1;display:grid;place-items:center;border:1px dashed rgba(232,189,115,.3);border-radius:18px;min-height:240px;color:#bba777">未检索到结果，可尝试输入“神木”“图谱”“印记”“东山经”。</div>`;
+  const stats = document.getElementById('searchStats');
+  if(stats) stats.innerHTML = `
+    <div class="side-line"><span>当前关键词</span><b>${query||'未输入'}</b></div>
+    <div class="side-line"><span>筛选类别</span><b>${activeFilter}</b></div>
+    <div class="side-line"><span>结果数量</span><b>${list.length}</b></div>
+    <div class="side-line"><span>已接入界面</span><b>${PAGES.length-1}</b></div>`;
+}
+
+function detailText(p){
+  if(!p) return '该节点为临时信息层，可承载文字说明、高清贴图、属性表和跳转按钮。';
+  if(p.group==='神木灵植') return '灵植节点记录其生长环境、形态纹理、神话寓意与互动采集状态。弹窗可用于展示局部贴图、药性标签、生态关系和“加入印记”的反馈。';
+  if(p.group==='神话谱系') return '谱系节点强调人物、异兽、神祇和事件之间的关系链。弹窗适合呈现关系说明、源流层级、相关节点入口以及故事片段。';
+  if(p.group==='我的印记') return '印记节点记录用户的探索轨迹、收藏条目和已解锁章节。弹窗可展示个人进度、徽章、今日记录和二次进入路径。';
+  if(p.id==='home') return '首页作为总入口，承载四大模块、今日山海、典籍搜索和用户印记。弹窗用于说明当前节点、提示热区操作和引导继续探索。';
+  return '该分卷节点对应山川、异兽、路径和文献卡片。弹窗补充“查看详情”交互：展示局部影像、条目属性、传说摘要和关联界面跳转。';
+}
+function openDetail(id, customTitle){
+  const p = pageById[id] || currentPage || pageById.home;
+  let modal = document.getElementById('modal');
+  if(!modal){ stage().insertAdjacentHTML('beforeend', `<div id="modal" class="modal-mask"></div>`); modal=document.getElementById('modal'); }
+  const title = customTitle || p.shortTitle || p.title;
+  modal.innerHTML = `<div class="detail-modal">
+    <button class="close-x" onclick="closeDetail()">×</button>
+    <div class="modal-grid">
+      <div class="modal-image"><img src="${p.asset}" alt="${title}"></div>
+      <div class="modal-info">
+        <span class="modal-eyebrow">详细弹窗 · DETAIL</span>
+        <h2>${title}</h2>
+        <p>${p.group} / ${p.subtitle}</p>
+        <div class="stats-grid">
+          <div class="stat"><span>档案类型</span><b>${p.kind==='plant'?'灵植':p.kind==='myth'?'谱系':p.kind==='mark'?'印记':p.kind==='home'?'首页':'山海节点'}</b></div>
+          <div class="stat"><span>交互方式</span><b>点击热区 / 搜索进入</b></div>
+          <div class="stat"><span>状态</span><b>已补全</b></div>
+          <div class="stat"><span>关联节点</span><b>${PAGES.filter(x=>x.group===p.group).length} 个</b></div>
+        </div>
+        <div class="detail-model-box"><span class="detail-model-tag">关联 3D · ${modelLabel(currentModelKey(p))}</span><model-viewer src="${(MODEL_LIBRARY[currentModelKey(p)]||MODEL_LIBRARY.combined).src}" camera-controls auto-rotate rotation-per-second="18deg" exposure="1.06" shadow-intensity=".9" interaction-prompt="none"></model-viewer></div>
+        <div class="modal-text"><p>${detailText(p)}</p><p style="margin-top:10px">当前版本已经给所有界面接入统一交互：顶部导航、左侧分卷、中心节点、右侧详情、底部卡片、搜索、加载过渡、详情弹窗与内容匹配的 3D 模型。</p></div>
+        <div class="modal-actions"><button class="solid-btn" onclick="closeDetail(); gotoPage('${p.id}')">进入此界面</button><button class="ghost-btn" onclick="showToast('已加入我的印记')">加入印记</button><button class="ghost-btn" onclick="openSearch()">继续检索</button></div>
+      </div>
+    </div>
+  </div>`;
+  modal.classList.add('active');
+}
+function closeDetail(){ const m=document.getElementById('modal'); if(m) m.classList.remove('active'); }
+function showToast(text){
+  let t=document.getElementById('toast');
+  if(!t){ stage().insertAdjacentHTML('beforeend', `<div id="toast" class="toast"></div>`); t=document.getElementById('toast'); }
+  t.textContent = text; t.classList.add('active'); setTimeout(()=>t.classList.remove('active'), 1400);
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ closeDetail(); if(document.querySelector('.search-page')) renderPage(lastPageBeforeSearch || 'home'); }
+  if(e.key.toLowerCase()==='s') openSearch();
+  if(e.key.toLowerCase()==='h') toggleHotspots();
+  if(e.key.toLowerCase()==='m') toggleModelDock();
+  if(e.key==='ArrowRight') gotoNeighbor(1);
+  if(e.key==='ArrowLeft') gotoNeighbor(-1);
+});
+
+(function init(){
+  const hash = location.hash.replace('#','');
+  if(hash && pageById[hash]) renderPage(hash); else renderSplash();
+})();
+</script>
+</body>
+</html>
