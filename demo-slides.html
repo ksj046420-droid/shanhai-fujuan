@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>山海浮卷 · 功能演示</title>
+<style>
+:root {
+  --gold: #e8bd73;
+  --gold2: #ffdd92;
+  --deep: #051018;
+  --panel: rgba(6,17,25,.82);
+  --cyan: #7ed8ff;
+  --ink: #0a1420;
+  --paper: #dbc089;
+  --red: #ba4b2b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #02070c;
+  color: #f7e8c6;
+  font-family: "Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at 50% 48%, rgba(240,177,72,.15), transparent 32%),
+              linear-gradient(180deg, #02050b, #07131b 48%, #02050b);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── 主舞台 ── */
+#stage {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  z-index: 1;
+}
+.slides-container {
+  position: relative;
+  width: min(96vw, 1400px);
+  height: min(90vh, 820px);
+  overflow: hidden;
+  border: 1px solid rgba(232,189,115,.42);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(5,18,27,.92), rgba(2,8,12,.96));
+  box-shadow: 0 28px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,237,188,.08) inset,
+              0 0 80px rgba(232,189,115,.08);
+}
+.slides-container::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 28% 28%, rgba(232,189,115,.10), transparent 28%),
+              radial-gradient(circle at 82% 15%, rgba(126,216,255,.07), transparent 23%);
+  pointer-events: none; z-index: 0;
+  border-radius: 28px;
+}
+
+/* ── 单张幻灯片 ── */
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 50px 60px;
+  opacity: 0;
+  transform: translateY(30px) scale(.97);
+  transition: opacity .65s cubic-bezier(.4,0,.2,1), transform .65s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+  z-index: 1;
+  text-align: center;
+}
+.slide.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.slide.exit-left {
+  opacity: 0;
+  transform: translateX(-60px) scale(.95);
+}
+
+/* ── 幻灯片内容 ── */
+.slide-icon {
+  font-size: 72px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 0 22px rgba(232,189,115,.35));
+  animation: iconFloat 3s ease-in-out infinite;
+}
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.slide-badge {
+  display: inline-block;
+  padding: 5px 14px;
+  border: 1px solid rgba(232,189,115,.45);
+  border-radius: 999px;
+  color: #ffd78b;
+  font-size: 12px;
+  letter-spacing: .2em;
+  margin-bottom: 14px;
+  background: rgba(232,189,115,.06);
+}
+.slide h2 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 3.5vw, 48px);
+  font-family: Georgia, "STKaiti", "KaiTi", serif;
+  color: #ffdc91;
+  letter-spacing: .1em;
+  text-shadow: 0 0 30px rgba(232,189,115,.25);
+}
+.slide p.desc {
+  max-width: 620px;
+  margin: 0 auto 18px;
+  color: #b4c1c5;
+  font-size: clamp(13px, 1.2vw, 16px);
+  line-height: 1.85;
+  letter-spacing: .04em;
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+  margin-top: 8px;
+}
+.feature-card {
+  border: 1px solid rgba(232,189,115,.20);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(0,0,0,.18);
+  text-align: left;
+  transition: .22s ease;
+}
+.feature-card:hover {
+  border-color: rgba(255,219,145,.55);
+  background: rgba(232,189,115,.06);
+  transform: translateY(-2px);
+}
+.feature-card .fc-icon { font-size: 28px; margin-bottom: 6px; }
+.feature-card strong { display: block; color: #ffe0a4; font-size: 15px; margin-bottom: 4px; }
+.feature-card span { font-size: 12px; color: #8098a1; line-height: 1.5; }
+
+.highlight-num {
+  font-size: 64px;
+  font-family: Georgia, "STKaiti", "KaiTi", serif;
+  background: linear-gradient(180deg, #fff3bd, #d89d43 65%, #79511e);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* ── 底部导航 ── */
+.nav-bar {
+  position: absolute; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 10px; align-items: center;
+  z-index: 10;
+}
+.nav-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,189,115,.40);
+  background: transparent;
+  cursor: pointer;
+  transition: .22s ease;
+}
+.nav-dot.active {
+  background: linear-gradient(135deg, #ffd885, #c6842b);
+  border-color: #ffd885;
+  box-shadow: 0 0 12px rgba(232,189,115,.45);
+  width: 28px;
+  border-radius: 99px;
+}
+.nav-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,189,115,.38);
+  background: rgba(0,0,0,.34);
+  color: #f4d59c;
+  font-size: 18px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: .18s ease;
+  backdrop-filter: blur(8px);
+}
+.nav-btn:hover { background: rgba(232,189,115,.16); color: #fff0c4; }
+
+/* ── 顶部进度条 ── */
+.progress-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(232,189,115,.12);
+  z-index: 10;
+  border-radius: 28px 28px 0 0;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #ffda8a, #fff4c7);
+  transition: width .5s ease;
+  border-radius: 0 3px 3px 0;
+}
+
+/* ── 自动播放提示 ── */
+.auto-badge {
+  position: absolute; top: 18px; right: 24px;
+  z-index: 10;
+  display: flex; gap: 8px; align-items: center;
+}
+.auto-badge button {
+  height: 28px; padding: 0 12px;
+  border: 1px solid rgba(232,189,115,.32);
+  background: rgba(0,0,0,.28);
+  color: #d8c298;
+  border-radius: 999px;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: .04em;
+  backdrop-filter: blur(8px);
+  transition: .18s ease;
+}
+.auto-badge button:hover { background: rgba(232,189,115,.16); color: #ffe4ad; }
+.auto-badge button.active { background: rgba(232,189,115,.22); color: #ffe4ad; border-color: rgba(255,219,145,.55); }
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+  .slide { padding: 30px 24px; }
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .feature-grid { grid-template-columns: 1fr; }
+  .slide-icon { font-size: 48px; }
+  .slide h2 { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="slides-container" id="slidesContainer">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <!-- 幻灯片 0: 开场 -->
+    <div class="slide active" data-index="0">
+      <div class="slide-icon">📜</div>
+      <div class="slide-badge">山海浮卷 · SHANHAI FUJUAN</div>
+      <h2>互动式山海经百科全书</h2>
+      <p class="desc">一部将《山海经》古籍数字化、交互化的探索之作。<br>融合古风美学与现代 Web 技术，带你沉浸式游历华夏山海世界。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">🗺️</div><strong>山海疆域</strong><span>24 幅古地图，山川脉络与异兽分布</span></div>
+        <div class="feature-card"><div class="fc-icon">🐉</div><strong>异兽图鉴</strong><span>百兽档案、纹样拓片与传说追踪</span></div>
+        <div class="feature-card"><div class="fc-icon">🌳</div><strong>神木灵植</strong><span>9 幅灵植图谱，生长纹理与药性</span></div>
+        <div class="feature-card"><div class="fc-icon">🔮</div><strong>神话谱系</strong><span>10 张关系图谱，神祇血脉链接</span></div>
+        <div class="feature-card"><div class="fc-icon">🏷️</div><strong>我的印记</strong><span>15 页个人收藏，探索记录与徽章</span></div>
+        <div class="feature-card"><div class="fc-icon">🎮</div><strong>3D 交互</strong><span>卷轴、神木、异兽浮雕立体模型</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 1: 启动页 -->
+    <div class="slide" data-index="1">
+      <div class="slide-icon">✨</div>
+      <div class="slide-badge">首页体验</div>
+      <h2>沉浸式启动页</h2>
+      <p class="desc">打开即见古卷展开动画 —— 旋转灵光环、浮动星尘、金色渐变标题。<br>点击「开启山海探索」进入首页，一键跳转四大核心模块。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">💫</div><strong>动态开场</strong><span>三层旋转光环 + 粒子星空背景</span></div>
+        <div class="feature-card"><div class="fc-icon">🎯</div><strong>一键入画</strong><span>金色按钮带扫描进度条动画</span></div>
+        <div class="feature-card"><div class="fc-icon">🖼️</div><strong>首页总览</strong><span>四大入口卡片 + 今日山海推荐</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 2: 山海疆域 -->
+    <div class="slide" data-index="2">
+      <div class="slide-icon">🗺️</div>
+      <div class="slide-badge">核心功能 · 山海疆域</div>
+      <h2>24 幅古地图导航</h2>
+      <p class="desc">东山经、南山经、西山经、北山经、中山经、海内经、海外经、大荒经<br>—— 八大方位的完整山海地理，一键切换，无缝浏览。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">📍</div><strong>热点交互</strong><span>8 个异兽节点可点击查看详情</span></div>
+        <div class="feature-card"><div class="fc-icon">📋</div><strong>左侧分卷栏</strong><span>11 个地理分类，点击直达对应地图</span></div>
+        <div class="feature-card"><div class="fc-icon">🔄</div><strong>左右翻页</strong><span>键盘 ← → 或底部按钮快速切换</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 3: 搜索页 -->
+    <div class="slide" data-index="3">
+      <div class="slide-icon">🔍</div>
+      <div class="slide-badge">核心功能 · 山海检索司</div>
+      <h2>全界面智能搜索</h2>
+      <p class="desc">覆盖全部 58 个页面，支持按关键词搜索、按类别筛选。<br>结果以卡片形式展示，可一键进入页面或打开详细弹窗。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">⌨️</div><strong>关键词检索</strong><span>支持中文分词，输入即搜</span></div>
+        <div class="feature-card"><div class="fc-icon">🏷️</div><strong>分类筛选</strong><span>疆域/灵植/谱系/印记一键过滤</span></div>
+        <div class="feature-card"><div class="fc-icon">📊</div><strong>实时统计</strong><span>侧栏展示检索状态与结果数量</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 4: 详情弹窗 -->
+    <div class="slide" data-index="4">
+      <div class="slide-icon">📋</div>
+      <div class="slide-badge">核心功能 · 详细弹窗</div>
+      <h2>节点详情与档案卡片</h2>
+      <p class="desc">点击任意热区均可弹出详情窗口 —— 左侧高清影像、右侧档案数据。<br>支持关联 3D 模型预览、加入印记收藏、继续检索跳转。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">🖼️</div><strong>高清影像</strong><span>左侧展示对应页面的局部纹理拓片</span></div>
+        <div class="feature-card"><div class="fc-icon">📈</div><strong>属性面板</strong><span>档案类型、交互方式、关联节点数</span></div>
+        <div class="feature-card"><div class="fc-icon">🔗</div><strong>快捷操作</strong><span>进入界面 / 加入印记 / 继续检索</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 5: 3D模型 -->
+    <div class="slide" data-index="5">
+      <div class="slide-icon">🧊</div>
+      <div class="slide-badge">特色功能 · 3D 模型浮窗</div>
+      <h2>立体文物交互展示</h2>
+      <p class="desc">页面右侧悬浮 3D 模型窗口，拖拽旋转、滚轮缩放。<br>根据当前页面自动匹配：卷轴、神木、异兽浮雕、疆域地图。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">📜</div><strong>山海经卷轴</strong><span>金边题签、山纹墨线与热点光环</span></div>
+        <div class="feature-card"><div class="fc-icon">🌲</div><strong>神木 3D</strong><span>树干枝冠、灵果萤火粒子与能量环</span></div>
+        <div class="feature-card"><div class="fc-icon">🗿</div><strong>异兽浮雕</strong><span>石板兽首、符文边框与灵光环</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 6: 快捷操作 -->
+    <div class="slide" data-index="6">
+      <div class="slide-icon">⚡</div>
+      <div class="slide-badge">交互设计 · 快捷操作</div>
+      <h2>键盘 / 触控 / 导航栏</h2>
+      <p class="desc">多种操控方式覆盖全部交互场景，学习成本低、操作效率高。</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">⌨️</div><strong>键盘快捷键</strong><span>S=搜索 H=热区 M=3D模型 ←→=翻页 ESC=关闭</span></div>
+        <div class="feature-card"><div class="fc-icon">👆</div><strong>热区悬停</strong><span>鼠标悬停高亮显示标签，点击触发交互</span></div>
+        <div class="feature-card"><div class="fc-icon">🧭</div><strong>底部导航栏</strong><span>首页/疆域/异兽/灵植/谱系/印记一键抵达</span></div>
+      </div>
+    </div>
+
+    <!-- 幻灯片 7: 结尾 -->
+    <div class="slide" data-index="7">
+      <div class="slide-icon">🏔️</div>
+      <div class="slide-badge">山海浮卷 · 演示结束</div>
+      <h2>开启你的山海探索</h2>
+      <p class="desc">58 个交互界面 · 170+ 高清古卷图 · 3D 文物模型 · 一键搜索<br>全部以一张 HTML 文件交付，即刻在浏览器中运行。</p>
+      <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+        <a href="https://ksj046420-droid.github.io/shanhai-fujuan/" target="_blank" style="text-decoration:none;">
+          <button style="border:0;background:linear-gradient(180deg,#ffe4a8,#c6842b);color:#211407;font-size:16px;font-weight:700;letter-spacing:.1em;border-radius:999px;padding:13px 32px;cursor:pointer;box-shadow:0 0 28px rgba(246,184,87,.35);">🌐 在线体验</button>
+        </a>
+        <button onclick="location.reload()" style="border:1px solid rgba(232,189,115,.42);background:rgba(232,189,115,.08);color:#f9deaa;border-radius:999px;padding:13px 32px;cursor:pointer;font-size:16px;letter-spacing:.1em;">🔄 重新播放</button>
+      </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="prevSlide()" title="上一页">◀</button>
+      <div id="navDots"></div>
+      <button class="nav-btn" onclick="nextSlide()" title="下一页">▶</button>
+    </div>
+
+    <!-- 自动播放 -->
+    <div class="auto-badge">
+      <button id="autoBtn" class="active" onclick="toggleAuto()">⏱ 自动播放</button>
+      <button onclick="goToSlide(0)">↺ 从头</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 8; // 0-7
+let current = 0;
+let autoPlay = true;
+let autoTimer = null;
+const INTERVAL = 5000; // 5s per slide
+
+function renderDots() {
+  const dots = document.getElementById('navDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < TOTAL; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === current ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    dots.appendChild(dot);
+  }
+}
+
+function goToSlide(index) {
+  if (index === current || index < 0 || index >= TOTAL) return;
+  const slides = document.querySelectorAll('.slide');
+  const oldSlide = slides[current];
+  const newSlide = slides[index];
+
+  // 退出旧幻灯片
+  oldSlide.classList.remove('active');
+  oldSlide.classList.add(index > current ? 'exit-left' : '');
+  // 移除 exit-left（将来用）
+  setTimeout(() => oldSlide.classList.remove('exit-left'), 650);
+
+  // 进入新幻灯片
+  newSlide.classList.add('active');
+
+  current = index;
+  renderDots();
+  updateProgress();
+  resetAutoTimer();
+}
+
+function nextSlide() { goToSlide((current + 1) % TOTAL); }
+function prevSlide() { goToSlide((current - 1 + TOTAL) % TOTAL); }
+
+function updateProgress() {
+  const pct = ((current + 1) / TOTAL) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function resetAutoTimer() {
+  clearTimeout(autoTimer);
+  if (autoPlay) autoTimer = setTimeout(nextSlide, INTERVAL);
+}
+
+function toggleAuto() {
+  autoPlay = !autoPlay;
+  const btn = document.getElementById('autoBtn');
+  btn.classList.toggle('active', autoPlay);
+  btn.textContent = autoPlay ? '⏸ 暂停' : '▶ 自动播放';
+  if (autoPlay) resetAutoTimer();
+  else clearTimeout(autoTimer);
+}
+
+// 键盘控制
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  if (e.key === 'Home') { e.preventDefault(); goToSlide(0); }
+  if (e.key === 'End') { e.preventDefault(); goToSlide(TOTAL - 1); }
+});
+
+// 触摸滑动
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    dx > 0 ? prevSlide() : nextSlide();
+  }
+});
+
+// 初始化
+renderDots();
+updateProgress();
+resetAutoTimer();
+</script>
+</body>
+</html>
